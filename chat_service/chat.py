@@ -12,7 +12,7 @@ from utils.hybrid_retriever import optimized_retrieve
 #调用DeepSeek大模型
 def call_deepseek(messages: list):
     deepseek_llm =OpenAI(
-        api_key = config.DEEPSEEK_API_KEY,
+        api_key = "sk-097c5cc5fb5c461cb0742215809358ba",
         base_url = config.DEEPSEEK_BASE_URL,
     )
 

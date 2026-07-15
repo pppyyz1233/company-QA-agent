@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud import user as user_crud
 from stock.db import get_db
-from utils.document_service import pdf_service, word_service
+from utils.document_service import handle_document
 
 router = APIRouter(prefix="/api/upload", tags=["文档上传"])
 security = HTTPBearer()

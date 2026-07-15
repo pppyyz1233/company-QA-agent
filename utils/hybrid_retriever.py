@@ -141,9 +141,10 @@ class RetrievalOptimizer:
 
         self.bm25_retriever.load_from_chroma(chroma_client)
 
-    def _chroma_search(self, query: str):
-        results = self.chroma.similarity_search_with_relevance_scores(query, vector_top_k)
-
+    def _chroma_search(self, query: str, top_k: int = None):
+        if top_k is None:
+            top_k = vector_top_k
+        results = self.chroma.similarity_search_with_relevance_scores(query, top_k)
         return [(doc.page_content, score) for doc, score in results]
 
     def _merge_rankings(

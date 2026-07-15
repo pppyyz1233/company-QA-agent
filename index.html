@@ -1,665 +1,166 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>企业制度智能问答系统</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; display: flex; gap: 20px; height: calc(100vh - 40px); }
-        .sidebar { width: 280px; background: white; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
-        .sidebar-header { padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .sidebar-header h2 { font-size: 18px; margin-bottom: 12px; }
-        .new-chat-btn { width: 100%; padding: 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; cursor: pointer; }
-        .conversation-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .conversation-item { padding: 12px; margin-bottom: 8px; background: #f8f9fa; border-radius: 8px; cursor: pointer; position: relative; }
-        .conversation-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .conversation-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 60px; }
-        .conversation-time { font-size: 11px; opacity: 0.7; }
-        .delete-conv, .rename-conv { position: absolute; background: none; border: none; cursor: pointer; font-size: 14px; display: none; padding: 4px 8px; border-radius: 4px; top: 50%; transform: translateY(-50%); }
-        .delete-conv { right: 10px; color: #999; }
-        .rename-conv { right: 40px; color: #999; }
-        .delete-conv:hover { color: #dc3545; }
-        .rename-conv:hover { color: #28a745; }
-        .conversation-item:hover .delete-conv, .conversation-item:hover .rename-conv { display: block; }
-        .main-area { flex: 1; background: white; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
-        .user-info { padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; }
-        .logout-btn { padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        .chat-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
-        .chat-header h1 { font-size: 20px; }
-        .chat-header p { font-size: 12px; color: #666; margin-top: 4px; }
-        .messages-area { flex: 1; overflow-y: auto; padding: 20px; background: #f8f9fa; }
-        .message { display: flex; margin-bottom: 20px; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .message.user { justify-content: flex-end; }
-        .message.assistant { justify-content: flex-start; }
-        .message-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin: 0 12px; flex-shrink: 0; }
-        .message.user .message-avatar { background: #667eea; color: white; order: 2; }
-        .message.assistant .message-avatar { background: #28a745; color: white; }
-        .message-content { max-width: 70%; padding: 12px 16px; border-radius: 16px; line-height: 1.5; font-size: 14px; word-wrap: break-word; }
-        .message.user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom-right-radius: 4px; }
-        .message.assistant .message-content { background: white; color: #333; border: 1px solid #e9ecef; border-bottom-left-radius: 4px; }
-        .message.assistant .message-content h1 { font-size: 1.5em; margin: 0.5em 0; border-bottom: 1px solid #e9ecef; }
-        .message.assistant .message-content h2 { font-size: 1.3em; margin: 0.4em 0; }
-        .message.assistant .message-content h3 { font-size: 1.1em; margin: 0.3em 0; }
-        .message.assistant .message-content p { margin: 0.5em 0; }
-        .message.assistant .message-content ul, .message.assistant .message-content ol { margin: 0.5em 0; padding-left: 1.5em; }
-        .message.assistant .message-content code { background: #f8f9fa; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
-        .message.assistant .message-content pre { background: #f8f9fa; padding: 10px; border-radius: 8px; overflow-x: auto; }
-        .message.assistant .message-content blockquote { border-left: 4px solid #667eea; padding-left: 12px; margin: 0.5em 0; color: #666; }
-        .sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e9ecef; font-size: 11px; color: #666; }
-        .source-item { margin-top: 4px; padding: 4px 8px; background: #f8f9fa; border-radius: 4px; word-break: break-all; }
-        .input-area { padding: 20px; border-top: 1px solid #e9ecef; display: flex; gap: 12px; background: white; }
-        .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #e9ecef; border-radius: 24px; outline: none; }
-        .input-area input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
-        .input-area button { padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 24px; cursor: pointer; }
-        .input-area button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .auth-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .auth-card { background: white; border-radius: 24px; padding: 40px; width: 360px; }
-        .auth-card h2 { text-align: center; margin-bottom: 24px; }
-        .auth-card input { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #e9ecef; border-radius: 8px; }
-        .auth-card button { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 12px; }
-        .auth-card .switch-btn { background: none; color: #667eea; border: 1px solid #667eea; background: white; }
-        .error-msg { color: #dc3545; font-size: 12px; text-align: center; margin-bottom: 12px; }
-        .typing-indicator { display: flex; gap: 4px; padding: 12px 16px; }
-        .typing-indicator span { width: 8px; height: 8px; background: #999; border-radius: 50%; animation: bounce 1.4s infinite; }
-        @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
-        .empty-state, .welcome-message { text-align: center; padding: 60px 20px; color: #999; }
-        .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; z-index: 1000; animation: slideIn 0.3s ease; }
-        .toast.error { background: #dc3545; }
-        .toast.success { background: #28a745; }
-        .toast.info { background: #17a2b8; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>企业制度智能问答</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<style>
+:root{--brand:#475569;--brand-hover:#334155;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--input-bg:#f1f5f9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+input,button{font-family:inherit}
+.fld{background:var(--input-bg);border:2px solid transparent;border-radius:10px;padding:10px 14px;font-size:14px;width:100%;outline:none;color:var(--text);transition:all .2s}
+.fld:focus{border-color:var(--brand);background:#fff}
+.fld::placeholder{color:#94a3b8}
+.btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--brand-hover);transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;pointer-events:none;transform:none}
+.btn-ghost{background:transparent;border:2px solid var(--border);color:var(--text);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{background:var(--input-bg)}
+.msg-user{background:#334155;color:#fff;font-size:13px;letter-spacing:-.01em;border-radius:16px 16px 4px 16px}
+.msg-ai{background:var(--card);border:1px solid var(--border);border-radius:16px 16px 16px 4px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.markdown h2{font-size:1.1em;font-weight:700;margin:.5em 0 .2em;color:var(--brand)}
+.markdown table{width:100%;border-collapse:collapse;margin:.3em 0;font-size:.88em}
+.markdown th{background:var(--input-bg);font-weight:600;text-align:left;padding:6px 10px;border:1px solid var(--border)}
+.markdown td{padding:6px 10px;border:1px solid var(--border)}
+.markdown strong{color:var(--brand)}
+.markdown p{margin:.3em 0}
+.markdown ul,.markdown ol{padding-left:1.5em;margin:.3em 0}
+.modal-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(3px)}
+.source-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;background:#f1f5f9;color:#475569;margin-right:4px}
+</style>
 </head>
-<body>
+<body style="display:flex;height:100vh">
 
-<div class="container" id="app" style="display: none;">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>💬 我的对话</h2>
-            <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
-        </div>
-        <div class="conversation-list" id="conversationList">
-            <div class="empty-state">暂无对话，点击上方新建</div>
-        </div>
+<!-- SIDEBAR -->
+<div style="width:260px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;flex-shrink:0">
+  <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px">
+    <div style="width:32px;height:32px;background:var(--brand);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">Q</div>
+    <div>
+      <div style="font-weight:700;font-size:14px;color:var(--text)">制度问答</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:500">Company Q&A</div>
     </div>
-    <div class="main-area">
-        <div class="user-info">
-            <span class="user-name" id="userName"></span>
-            <button class="logout-btn" id="logoutBtn">退出登录</button>
-        </div>
-        <div class="chat-header">
-            <h1>🤖 企业制度智能助手</h1>
-            <p>基于RAG技术的智能问答系统</p>
-        </div>
-        <div class="messages-area" id="messagesArea">
-            <div class="welcome-message"><p>✨ 选择一个对话，开始提问</p></div>
-        </div>
-        <div class="input-area">
-            <input type="text" id="questionInput" placeholder="输入您的问题..." onkeypress="handleKeyPress(event)">
-            <button id="sendBtn">发送</button>
-        </div>
+  </div>
+
+  <div style="flex:1;padding:16px;overflow-y:auto">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="newChat()" class="btn" style="width:100%">新对话</button>
+      <div id="convList" style="display:flex;flex-direction:column;gap:4px;margin-top:8px"></div>
     </div>
+
+    <div style="margin-top:16px;padding:12px;background:var(--input-bg);border-radius:10px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px">知识库状态</div>
+      <div id="kbStatus" style="font-size:11px;color:var(--text)">加载中...</div>
+    </div>
+  </div>
+
+  <div style="padding:12px 16px;border-top:1px solid #e2e8f0;font-size:12px">
+    <div id="loginBtn" onclick="showLogin()" style="color:var(--brand);cursor:pointer;font-weight:500">登入账号</div>
+    <div id="userBox" style="display:none;align-items:center;gap:6px">
+      <span id="uAv" style="width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700"></span>
+      <span id="uNm" style="font-size:12px;font-weight:500"></span>
+      <span onclick="logout()" style="color:var(--muted);cursor:pointer;margin-left:auto;font-size:10px">退出</span>
+    </div>
+  </div>
 </div>
 
-<div class="auth-overlay" id="authOverlay">
-    <div class="auth-card">
-        <h2 id="authTitle">登录</h2>
-        <input type="text" id="username" placeholder="用户名" autocomplete="off">
-        <input type="password" id="password" placeholder="密码" autocomplete="new-password">
-        <div class="error-msg" id="authError"></div>
-        <button id="authBtn">登录</button>
-        <button class="switch-btn" id="switchModeBtn">没有账号？去注册</button>
+<!-- CHAT AREA -->
+<div style="flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0">
+  <div id="chatBox" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px">
+    <div id="welcome" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px;opacity:.6;filter:grayscale(1)">&#x1F4DA;</div>
+      <h2 style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">企业制度智能问答</h2>
+      <p style="font-size:13px;text-align:center;max-width:320px;line-height:1.6">上传制度文档后，用自然语言提问<br>比如：年假有几天？加班费怎么算？</p>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <span onclick="quickAsk('年假有几天')" class="source-tag" style="cursor:pointer">年假</span>
+        <span onclick="quickAsk('工资几号发')" class="source-tag" style="cursor:pointer">工资</span>
+        <span onclick="quickAsk('请假流程')" class="source-tag" style="cursor:pointer">请假</span>
+        <span onclick="quickAsk('五险一金怎么交')" class="source-tag" style="cursor:pointer">五险一金</span>
+        <span onclick="quickAsk('加班费怎么算')" class="source-tag" style="cursor:pointer">加班</span>
+        <span onclick="quickAsk('离职流程')" class="source-tag" style="cursor:pointer">离职</span>
+      </div>
     </div>
+  </div>
+  <div style="padding:12px 20px;border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:8px;align-items:center">
+    <input id="chatInput" class="fld" placeholder="输入问题..." onkeydown="if(event.key==='Enter')send()">
+    <button onclick="send()" class="btn">提问</button>
+  </div>
+</div>
+
+<!-- RIGHT: Source panel -->
+<div id="sourcePanel" style="width:320px;border-left:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">
+  <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">参考来源</div>
+  <div id="sourceContent" style="flex:1;overflow-y:auto;padding:12px 16px;font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center">提问后将显示相关制度原文</div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeLogin()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:360px" onclick="event.stopPropagation()">
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px" id="loginTitle">登入账号</div>
+    <div style="display:flex;background:var(--input-bg);border-radius:8px;padding:2px;margin-bottom:12px">
+      <button id="tabE" onclick="swT('email')" style="flex:1;padding:6px;font-size:12px;border-radius:6px;background:#fff;border:none;cursor:pointer;font-weight:500">邮箱</button>
+      <button id="tabP" onclick="swT('phone')" style="flex:1;padding:6px;font-size:12px;border-radius:6px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-weight:500">手机</button>
+    </div>
+    <form onsubmit="doLogin(event)" style="display:flex;flex-direction:column;gap:8px">
+      <div id="ef"><input id="lem" class="fld" placeholder="邮箱地址"></div>
+      <div id="pf" style="display:none"><input id="lph" class="fld" placeholder="手机号"></div>
+      <input id="lnm" class="fld" placeholder="用户名（注册时填写）">
+      <input id="lpw" type="password" class="fld" placeholder="密码">
+      <button type="submit" class="btn" style="width:100%">登入</button>
+    </form>
+    <div onclick="tgL()" id="tgLbl" style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted);cursor:pointer">没有账号？去注册</div>
+  </div>
 </div>
 
 <script>
-    // ========== 配置 ==========
-    const API_BASE = "http://127.0.0.1:8000/api";
+var A="http://localhost:8000/api",tk=localStorage.getItem("t"),cid=null,isReg=false,lt="email";
 
-    if (typeof marked !== 'undefined') {
-        marked.setOptions({ breaks: true, gfm: true });
-    }
+function addBubble(role,text,sources){
+  var el=document.getElementById("chatBox"),w=document.getElementById("welcome");if(w)w.style.display="none";
+  var d=document.createElement("div");d.style.cssText="display:flex;"+(role==="user"?"justify-content:flex-end":"justify-content:flex-start");
+  var html='<div style="max-width:80%;padding:10px 16px;font-size:13px;line-height:1.6;'+(role==="user"?"background:var(--brand);color:#fff;border-radius:16px 16px 4px 16px":"background:#fff;border:1px solid var(--border);border-radius:16px 16px 16px 4px")+'"><div class="markdown">'+(role==="assistant"?marked.parse(text):text)+'</div></div>';
+  d.innerHTML=html;el.appendChild(d);el.scrollTop=el.scrollHeight;
 
-    // 全局状态
-    let token = null;
-    let currentUser = null;
-    let currentConversationId = null;
-    let isAuthMode = true;
-    let isLoading = false;
-    let loadingMessageId = null;
+  // Show sources in right panel
+  if(sources&&sources.length){
+    var sc=document.getElementById("sourceContent");
+    sc.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">';
+    sources.forEach(function(s,i){
+      sc.innerHTML+='<div style="padding:10px;background:var(--input-bg);border-radius:8px;font-size:11px;line-height:1.5"><div style="font-weight:600;color:var(--text);margin-bottom:2px">来源 '+(i+1)+'</div>'+s.substring(0,200)+(s.length>200?'...':'')+'</div>';
+    });
+    sc.innerHTML+='</div>';
+  }
+}
 
-    // DOM 元素
-    const appContainer = document.getElementById('app');
-    const authOverlay = document.getElementById('authOverlay');
-    const conversationListDiv = document.getElementById('conversationList');
-    const messagesArea = document.getElementById('messagesArea');
-    const questionInput = document.getElementById('questionInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const userNameSpan = document.getElementById('userName');
-    const newChatBtn = document.getElementById('newChatBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const authErrorDiv = document.getElementById('authError');
-    const authTitle = document.getElementById('authTitle');
-    const authBtn = document.getElementById('authBtn');
-    const switchModeBtn = document.getElementById('switchModeBtn');
+function quickAsk(q){document.getElementById("chatInput").value=q;send()}
+function newChat(){cid=null;document.getElementById("chatBox").innerHTML='<div id="welcome" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted)"><div style="font-size:48px;margin-bottom:12px;opacity:.6;filter:grayscale(1)">&#x1F4DA;</div><h2 style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">企业制度智能问答</h2><p style="font-size:13px;text-align:center;max-width:320px;line-height:1.6">上传制度文档后，用自然语言提问</p></div>';document.getElementById("sourceContent").innerHTML='提问后将显示相关制度原文'}
 
-    // 工具函数
-    function renderMarkdown(content) {
-        if (!content) return '';
-        if (typeof marked !== 'undefined' && marked.parse) {
-            try { return marked.parse(content); } catch(e) { return escapeHtml(content); }
-        }
-        return escapeHtml(content).replace(/\n/g, '<br>');
-    }
+async function send(){
+  var msg=document.getElementById("chatInput").value.trim();if(!msg)return;if(!tk){showLogin();return}
+  document.getElementById("chatInput").value="";addBubble("user",msg);
+  try{
+    var r=await fetch(A+"/chat/send",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+tk},body:JSON.stringify({question:msg,conversation_id:cid})});var d=await r.json();
+    if(d.code===200||d.answer){cid=d.conversation_id||cid;addBubble("assistant",d.answer||d.message,d.sources||d.data?.sources)}
+    else addBubble("assistant",d.message||"请求失败")
+  }catch(e){addBubble("assistant","无法连接服务器")}
+}
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function truncateTitle(title) {
-        if (!title) return '新对话';
-        return title.length > 10 ? title.substring(0, 10) + '...' : title;
-    }
-
-    function showToast(message, type) {
-        const toast = document.createElement('div');
-        toast.className = 'toast ' + (type || 'info');
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-
-    function getAuthHeaders() {
-        return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
-    }
-
-    function formatTime(isoString) {
-        if (!isoString) return '';
-        const date = new Date(isoString);
-        const now = new Date();
-        const diff = now - date;
-        if (diff < 60000) return '刚刚';
-        if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
-        if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
-        return Math.floor(diff / 86400000) + '天前';
-    }
-
-    // ========== 核心：获取会话列表（最关键！）==========
-    async function fetchConversations() {
-        if (!token) {
-            console.log('没有token');
-            return [];
-        }
-
-        try {
-            console.log('正在请求会话列表...');
-            const response = await fetch(API_BASE + '/conversations/all_conversations', {
-                headers: getAuthHeaders()
-            });
-            const result = await response.json();
-            console.log('会话列表原始响应:', JSON.stringify(result));
-
-            if (result.code !== 200) {
-                console.log('响应码不是200:', result.code);
-                return [];
-            }
-
-            const data = result.data;
-            console.log('data内容:', data);
-
-            // 尝试各种可能的数据格式
-            let conversations = [];
-
-            // 格式1: { conversations: [...] }
-            if (data && data.conversations && Array.isArray(data.conversations)) {
-                conversations = data.conversations;
-                console.log('格式1: conversations数组, 长度:', conversations.length);
-            }
-            // 格式2: 直接是数组
-            else if (Array.isArray(data)) {
-                conversations = data;
-                console.log('格式2: 直接数组, 长度:', conversations.length);
-            }
-            // 格式3: 单个对象 { id, title, ... }
-            else if (data && data.id) {
-                conversations = [data];
-                console.log('格式3: 单个对象, 转为数组');
-            }
-            // 格式4: 其他情况
-            else {
-                console.log('未知格式，返回空数组');
-                return [];
-            }
-
-            console.log('最终会话列表:', conversations);
-            return conversations;
-
-        } catch (error) {
-            console.error('获取会话列表异常:', error);
-            return [];
-        }
-    }
-
-    // ========== 其他API ==========
-    async function createConversation(title) {
-        try {
-            const response = await fetch(API_BASE + '/conversations/creat_conversation', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ title: title || '新对话' })
-            });
-            const result = await response.json();
-            console.log('创建会话响应:', result);
-            if (result.code === 200) {
-                showToast('对话创建成功', 'success');
-                return result.data;
-            }
-            showToast('创建失败: ' + (result.message || '未知错误'), 'error');
-            return null;
-        } catch (error) {
-            console.error('创建会话失败:', error);
-            showToast('网络错误: ' + error.message, 'error');
-            return null;
-        }
-    }
-
-    async function deleteConversationById(conversationId) {
-        try {
-            const response = await fetch(API_BASE + '/conversations/' + conversationId, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-            const result = await response.json();
-            if (result.code === 200) {
-                showToast('对话已删除', 'success');
-                return true;
-            }
-            return false;
-        } catch (error) {
-            showToast('删除失败', 'error');
-            return false;
-        }
-    }
-
-    async function renameConversation(conversationId, newTitle) {
-        try {
-            const response = await fetch(API_BASE + '/conversations/rename_conversation?conversation_id=' + conversationId, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ title: newTitle })
-            });
-            const result = await response.json();
-            if (result.code === 200) {
-                showToast('重命名成功', 'success');
-                return true;
-            }
-            showToast('重命名失败', 'error');
-            return false;
-        } catch (error) {
-            showToast('网络错误', 'error');
-            return false;
-        }
-    }
-
-    // ========== 会话管理 ==========
-    async function loadConversations() {
-        console.log('开始加载会话列表...');
-        const conversations = await fetchConversations();
-        console.log('加载到的会话数量:', conversations.length);
-        renderConversationList(conversations);
-    }
-
-    function renderConversationList(conversations) {
-        console.log('渲染会话列表, 数量:', conversations.length);
-
-        if (!conversations || conversations.length === 0) {
-            conversationListDiv.innerHTML = '<div class="empty-state">暂无对话，点击上方新建</div>';
-            return;
-        }
-
-        let html = '';
-        for (let i = 0; i < conversations.length; i++) {
-            const conv = conversations[i];
-            const isActive = currentConversationId === conv.id;
-            const displayTitle = truncateTitle(conv.title);
-            html += `
-                <div class="conversation-item ${isActive ? 'active' : ''}" data-conv-id="${conv.id}">
-                    <div class="conversation-title" title="${escapeHtml(conv.title)}">${escapeHtml(displayTitle)}</div>
-                    <div class="conversation-time">${formatTime(conv.updated_at || conv.created_at)}</div>
-                    <button class="rename-conv" data-id="${conv.id}" title="重命名">✏️</button>
-                    <button class="delete-conv" data-id="${conv.id}" title="删除">🗑️</button>
-                </div>
-            `;
-        }
-        conversationListDiv.innerHTML = html;
-
-        // 绑定点击选择
-        document.querySelectorAll('.conversation-item').forEach(item => {
-            const convId = parseInt(item.dataset.convId);
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('delete-conv') && !e.target.classList.contains('rename-conv')) {
-                    selectConversation(convId);
-                }
-            });
-        });
-
-        // 绑定删除
-        document.querySelectorAll('.delete-conv').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const convId = parseInt(btn.dataset.id);
-                if (confirm('确定要删除这个对话吗？')) {
-                    const success = await deleteConversationById(convId);
-                    if (success) {
-                        if (currentConversationId === convId) currentConversationId = null;
-                        await loadConversations();
-                        const newConvs = await fetchConversations();
-                        if (newConvs.length > 0) await selectConversation(newConvs[0].id);
-                    }
-                }
-            });
-        });
-
-        // 绑定重命名
-        document.querySelectorAll('.rename-conv').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const convId = parseInt(btn.dataset.id);
-                const item = btn.closest('.conversation-item');
-                const titleSpan = item.querySelector('.conversation-title');
-                const currentTitle = titleSpan.getAttribute('title') || titleSpan.textContent;
-                const newTitle = prompt('请输入新标题:', currentTitle);
-                if (newTitle && newTitle.trim() && newTitle.trim() !== currentTitle) {
-                    const success = await renameConversation(convId, newTitle.trim());
-                    if (success) {
-                        await loadConversations();
-                    }
-                }
-            });
-        });
-    }
-
-    async function createNewConversation() {
-        const result = await createConversation('新对话');
-        if (result) {
-            currentConversationId = result.id;
-            await loadConversations();
-            messagesArea.innerHTML = '<div class="empty-state">💬 暂无消息，开始提问吧！</div>';
-            questionInput.focus();
-        }
-    }
-
-    async function selectConversation(conversationId) {
-        currentConversationId = conversationId;
-        await loadConversations();
-        await loadMessages(conversationId);
-    }
-
-    // ========== 消息管理 ==========
-    async function loadMessages(conversationId) {
-        try {
-            const response = await fetch(API_BASE + '/chat/history/' + conversationId, {
-                headers: getAuthHeaders()
-            });
-            const result = await response.json();
-            if (result.code === 200) {
-                renderMessages(result.data.messages || []);
-            }
-        } catch (error) {
-            messagesArea.innerHTML = '<div class="empty-state">加载失败</div>';
-        }
-    }
-
-    function renderMessages(messages) {
-        if (!messages || messages.length === 0) {
-            messagesArea.innerHTML = '<div class="welcome-message"><p>💬 暂无消息，开始提问吧！</p></div>';
-            return;
-        }
-
-        let html = '';
-        for (const msg of messages) {
-            if (msg.role === 'user') {
-                html += `<div class="message user">
-                    <div class="message-content">${escapeHtml(msg.content)}</div>
-                    <div class="message-avatar">👤</div>
-                </div>`;
-            } else {
-                let sourcesHtml = '';
-                if (msg.sources && msg.sources.length > 0) {
-                    sourcesHtml = '<div class="sources">📚 参考来源：';
-                    for (let i = 0; i < Math.min(msg.sources.length, 3); i++) {
-                        const src = msg.sources[i];
-                        const shortSrc = typeof src === 'string' ? src.substring(0, 50) : (src.page_content || '').substring(0, 50);
-                        sourcesHtml += `<div class="source-item">📄 ${escapeHtml(shortSrc)}...</div>`;
-                    }
-                    sourcesHtml += '</div>';
-                }
-                html += `<div class="message assistant">
-                    <div class="message-avatar">🤖</div>
-                    <div class="message-content">
-                        ${renderMarkdown(msg.content)}
-                        ${sourcesHtml}
-                    </div>
-                </div>`;
-            }
-        }
-        messagesArea.innerHTML = html;
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    }
-
-    function addUserMessage(content) {
-        if (messagesArea.querySelector('.welcome-message')) messagesArea.innerHTML = '';
-        messagesArea.innerHTML += `<div class="message user">
-            <div class="message-content">${escapeHtml(content)}</div>
-            <div class="message-avatar">👤</div>
-        </div>`;
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    }
-
-    function addLoadingMessage() {
-        loadingMessageId = 'loading_' + Date.now();
-        messagesArea.innerHTML += `<div class="message assistant" id="${loadingMessageId}">
-            <div class="message-avatar">🤖</div>
-            <div class="message-content">
-                <div class="typing-indicator"><span></span><span></span><span></span></div>
-            </div>
-        </div>`;
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    }
-
-    function removeLoadingMessage() {
-        if (loadingMessageId) {
-            const el = document.getElementById(loadingMessageId);
-            if (el) el.remove();
-            loadingMessageId = null;
-        }
-    }
-
-    function addAssistantMessage(content, sources) {
-        let sourcesHtml = '';
-        if (sources && sources.length > 0) {
-            sourcesHtml = '<div class="sources">📚 参考来源：';
-            for (let i = 0; i < Math.min(sources.length, 3); i++) {
-                const src = sources[i];
-                const shortSrc = typeof src === 'string' ? src.substring(0, 50) : (src.page_content || '').substring(0, 50);
-                sourcesHtml += `<div class="source-item">📄 ${escapeHtml(shortSrc)}...</div>`;
-            }
-            sourcesHtml += '</div>';
-        }
-        messagesArea.innerHTML += `<div class="message assistant">
-            <div class="message-avatar">🤖</div>
-            <div class="message-content">
-                ${renderMarkdown(content)}
-                ${sourcesHtml}
-            </div>
-        </div>`;
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    }
-
-    async function sendQuestion() {
-        const question = questionInput.value.trim();
-        if (!question) return;
-        if (!currentConversationId) {
-            showToast('请先创建或选择一个对话', 'error');
-            return;
-        }
-        if (isLoading) return;
-
-        isLoading = true;
-        sendBtn.disabled = true;
-        questionInput.value = '';
-
-        addUserMessage(question);
-        addLoadingMessage();
-
-        try {
-            const response = await fetch(API_BASE + '/chat', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ question, conversation_id: currentConversationId })
-            });
-            const result = await response.json();
-            removeLoadingMessage();
-
-            if (result.code === 200) {
-                addAssistantMessage(result.data.answer, result.data.sources);
-                await loadConversations();
-            } else {
-                addAssistantMessage('出错了：' + (result.message || '未知错误'), []);
-            }
-        } catch (error) {
-            removeLoadingMessage();
-            addAssistantMessage('网络错误：请确保后端服务已启动', []);
-        } finally {
-            isLoading = false;
-            sendBtn.disabled = false;
-            questionInput.focus();
-        }
-    }
-
-    function handleKeyPress(event) {
-        if (event.key === 'Enter') sendQuestion();
-    }
-
-    // ========== 认证 ==========
-    function toggleAuthMode() {
-        isAuthMode = !isAuthMode;
-        if (isAuthMode) {
-            authTitle.textContent = '登录';
-            authBtn.textContent = '登录';
-            switchModeBtn.textContent = '没有账号？去注册';
-        } else {
-            authTitle.textContent = '注册';
-            authBtn.textContent = '注册';
-            switchModeBtn.textContent = '已有账号？去登录';
-        }
-        authErrorDiv.textContent = '';
-    }
-
-    async function handleAuth() {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
-        if (!username || !password) {
-            authErrorDiv.textContent = '请输入用户名和密码';
-            return;
-        }
-
-        authBtn.disabled = true;
-        authBtn.innerHTML = '<span class="loading-spinner"></span> 处理中...';
-
-        const endpoint = isAuthMode ? '/user/login' : '/user/register';
-
-        try {
-            const response = await fetch(API_BASE + endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const result = await response.json();
-
-            if (result.code === 200) {
-                token = result.data.token;
-                currentUser = {
-                    id: result.data.user_id,
-                    username: result.data.username,
-                    nickname: result.data.nickname || result.data.username
-                };
-
-                authOverlay.style.display = 'none';
-                appContainer.style.display = 'flex';
-                userNameSpan.textContent = currentUser.nickname;
-
-                // 关键：登录后加载会话列表
-                await loadConversations();
-
-                // 确保有默认对话
-                const conversations = await fetchConversations();
-                if (conversations.length > 0) {
-                    currentConversationId = conversations[0].id;
-                    await loadMessages(currentConversationId);
-                }
-
-                showToast(isAuthMode ? '登录成功！' : '注册成功！', 'success');
-                usernameInput.value = '';
-                passwordInput.value = '';
-            } else {
-                authErrorDiv.textContent = result.message || (isAuthMode ? '登录失败' : '注册失败');
-            }
-        } catch (error) {
-            authErrorDiv.textContent = '网络错误：请确保后端服务已启动';
-        } finally {
-            authBtn.disabled = false;
-            authBtn.innerHTML = isAuthMode ? '登录' : '注册';
-        }
-    }
-
-    function logout() {
-        token = null;
-        currentUser = null;
-        currentConversationId = null;
-        appContainer.style.display = 'none';
-        authOverlay.style.display = 'flex';
-        usernameInput.value = '';
-        passwordInput.value = '';
-        isAuthMode = true;
-        toggleAuthMode();
-        messagesArea.innerHTML = '<div class="welcome-message"><p>✨ 请登录后开始使用</p></div>';
-        conversationListDiv.innerHTML = '<div class="empty-state">暂无对话</div>';
-        showToast('已退出登录', 'info');
-    }
-
-    // 绑定事件
-    newChatBtn.addEventListener('click', createNewConversation);
-    logoutBtn.addEventListener('click', logout);
-    authBtn.addEventListener('click', handleAuth);
-    switchModeBtn.addEventListener('click', toggleAuthMode);
-    sendBtn.addEventListener('click', sendQuestion);
-
-    // 初始化
-    function init() {
-        authOverlay.style.display = 'flex';
-        appContainer.style.display = 'none';
-        usernameInput.value = '';
-        passwordInput.value = '';
-        token = null;
-        currentUser = null;
-        currentConversationId = null;
-        conversationListDiv.innerHTML = '<div class="empty-state">暂无对话</div>';
-        messagesArea.innerHTML = '<div class="welcome-message"><p>✨ 请登录后开始使用</p></div>';
-    }
-    
-    init();
+// AUTH
+if(tk)loadU();
+function loadU(){fetch(A+"/auth/me",{headers:{Authorization:"Bearer "+tk}}).then(r=>r.json()).then(d=>{if(d.code===200){document.getElementById("loginBtn").style.display="none";document.getElementById("userBox").style.display="flex";document.getElementById("uNm").textContent=d.data.username;document.getElementById("uAv").textContent=d.data.username[0].toUpperCase()}}).catch(e=>{tk=null;localStorage.removeItem("t")})}
+function showLogin(){document.getElementById("loginModal").style.display="flex"}
+function closeLogin(){document.getElementById("loginModal").style.display="none"}
+function swT(t){lt=t;document.getElementById("ef").style.display=t==="email"?"block":"none";document.getElementById("pf").style.display=t==="phone"?"block":"none";document.getElementById("tabE").style.cssText=t==="email"?"flex:1;padding:6px;font-size:12px;border-radius:6px;background:#fff;border:none;cursor:pointer;font-weight:500":"flex:1;padding:6px;font-size:12px;border-radius:6px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-weight:500";document.getElementById("tabP").style.cssText=t==="phone"?"flex:1;padding:6px;font-size:12px;border-radius:6px;background:#fff;border:none;cursor:pointer;font-weight:500":"flex:1;padding:6px;font-size:12px;border-radius:6px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-weight:500"}
+function tgL(){isReg=!isReg;document.getElementById("loginTitle").textContent=isReg?"创建账号":"登入账号";document.getElementById("tgLbl").textContent=isReg?"已有账号？去登入":"没有账号？去注册";document.getElementById("lnm").parentElement.style.display=isReg?"block":"none"}
+function doLogin(e){e.preventDefault();var em=document.getElementById("lem").value,ph=document.getElementById("lph").value,nm=document.getElementById("lnm").value,pw=document.getElementById("lpw").value;if(isReg){fetch(A+"/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em||null,phone:ph||null,username:nm,password:pw})}).then(r=>r.json()).then(d=>{if(d.code===200){tk=d.data.access_token;localStorage.setItem("t",tk);closeLogin();loadU()}else alert(d.message)})}else{var ep=lt==="email"?"/auth/login/email":"/auth/login/phone";var body=lt==="email"?{email:em,password:pw}:{phone:ph,password:pw};fetch(A+ep,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json()).then(d=>{if(d.code===200){tk=d.data.access_token;localStorage.setItem("t",tk);closeLogin();loadU()}else alert(d.message)})}}
+function logout(){tk=null;localStorage.removeItem("t");location.reload()}
 </script>
 </body>
 </html>
